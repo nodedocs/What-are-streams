@@ -3,6 +3,6 @@
   "description": "Managing continuous data over time",
   "date": "Fri Aug 26 2011 03:08:50 GMT-0700 (PST)",
   "tags": ["core", "streams"],
-  "author": "Nico Reed",
+  "authors": ["Garen J. Torikian"],
   "difficulty": 3
 }

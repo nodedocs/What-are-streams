@@ -1,39 +1,17 @@
+# Understanding Streams
 
+Streams are a concept that are not unique to Node.js, but compliment its parallel processing and asynchronous paradigms. As its name implies, streams are a continuous flow of information that can be diverted or processed as it comes in. This is incredibly efficient, because you don't have to wait until a stream is finished before working with any data that's come in. You don't need to expect a callback to fire, because streams work through  the event loop.
 
-Streams are another basic construct in node.js that encourages asynchronous coding. Streams allow you to process the data as it is generated or retrieved. Streams can be readable, writeable, or both. 
+Although streams are very closely related to the Node.js I/O, they can also deal with file manipulation and requests to HTTP servers. The "stream" object can be readable, writable, or both at the same time. Each type of stream has its own events that emit when a certain action occurs.
 
-In other words, Streams use events to deal with data as it happens, rather than only with a callback at the end.  Readable streams emit the event `data` for each chunk of data that comes in, and an `end` event, which is emitted when there is no more data. Writeable streams can be written to with the `write()` function, and closed with the `end()` function.  All types of streams emit `error` events when errors arise.
+Here's a trivial example to demonstrates reading and writing files:
 
-As a quick example, we can write a simple version of `cp` (the unix utility that copies files). We could do that by reading the whole file with standard filesystem calls and then writing it out to a file. Unfortunately, that requires that the whole file be read in before it can be written. In the case of 1-2 giga files, you could run into out of memory operations. The biggest advantage that streams give you over their non-stream versions are that you can start process the info before you have all the information. In this case, writing out the file doesn't get sped up, but if we were streaming over the internet or doing cpu processing on it then there could be measurable performance improvements.
+<script src='http://snippets.c9.io/github.com/c9/nodemanual.org-examples/nodejs_dev_guide/understanding_streams/streams.ex.1.js?linestart=3&lineend=0&showlines=false' defer='defer'></script>
 
-Run this script with arguments like `node cp.js src.txt dest.txt`. This would mean, in the code below, that `process.argv[2]` is `src.txt` and `process.argv[3]` is `desc.txt`. 
+At first glance, this might appear to be the same as [reading and writing from a file regularly](reading_and_writing_files.html). The important thing to notice is that the `console.log()` statement is executed multiple times. That means that the `'data'` event is firing multiple times, which means the file reading and writing are happening multiple times. Node.js basically reads in as much data from the original file as it can, then writes some of it, then reads some more, and writes some more, and so on, until the process is finished and the `'end'` event is called.
 
-```js
-var fs = require('fs');
-console.log(process.argv[2], '->', process.argv[3]);
+In fact, performing this operation is rather common, and Node.js has several helper functions to assist this process, like [`streams.ReadableStream.pipe()`](../nodejs_ref_guide/streams.ReadableStream.html#streams.ReadableStream.pipe) and [`util.pump`](../nodejs_ref_guide/util.html#util.pump). To demonstrate this latter method, and to show how HTTP servers can use streams, too, take a look at this code:
 
-var readStream = fs.createReadStream(process.argv[2]);
-var writeStream = fs.createWriteStream(process.argv[3]);
+<script src='http://snippets.c9.io/github.com/c9/nodemanual.org-examples/nodejs_dev_guide/understanding_streams/streams.ex.1.js?linestart=3&lineend=0&showlines=false' defer='defer'></script>
 
-readStream.on('data', function (chunk) {
-  writeStream.write(chunk);
-});
-
-readStream.on('end', function () {
-  writeStream.end();
-});
-
-//Some basic error handling
-readStream.on('error', function (err) {
-  console.log("ERROR", err);
-});
-
-writeStream.on('error', function (err) {
-  console.log("ERROR", err);
-});
-```
-
-<a class="button download" href="#">Download Code Sample</a>
-
-
-This sets up a readable stream from the source file and a writable stream to the destination file. Then whenever the readable stream gets data, it gets written to the writeable stream. Then finally it closes the writable stream when the readable stream is finished. NOTE: it would have been better to use [pipe](/how-to-use-stream-pipe) like `readStream.pipe(writeStream);`, however, to show how streams work, we have done things the long way.
+When you navigate to the server URL, you should start to hear the MP3 playing. Notice that we don't need to worry ourselves about handling when events start or end. In fact, you should probably stick to using the helper methods, unless you need to do some additional work better suited within the event's callback (like printing messages via `console.log()`).
