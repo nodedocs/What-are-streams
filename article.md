@@ -79,7 +79,9 @@ This is an easy and nice way of making sure the write stream is not swamped with
 
 Even simpler, right?
 
-# A Real Example
+# Some Examples
+
+## HTTP Server Response and File Read Stream
 
 Let's say we have an HTTP server that is serving a large movie file to each customer. Here is how we would do it using streams in Node:
 
@@ -91,3 +93,23 @@ Let's say we have an HTTP server that is serving a large movie file to each cust
 		res.setHeader('Content-Type', 'video/quicktime');
 		movie.pipe(res);
 	}).listen(8080);
+
+## Piping the Request Body into a File Write Stream
+
+You can also pipe the response to an HTTP request into a file:
+
+    var http = require('http');
+	var fs   = require('fs');
+
+	var writeStream = fs.createWriteStream('nodejitsu_logo.png');
+
+	var options = {
+		host: 'nodejitsu.com',
+		path: '/img/header-logo-grey.png'
+	};
+
+	http.request(options, function(res) {
+		res.pipe(writeStream);
+	}).end();
+
+Here you are opening a file writable stream and then making a request to a nodejitsu server, asking for the nodejitsu logo. When the server response comes in, you pipe it into file.
