@@ -1,17 +1,93 @@
-# Understanding Streams
+# What Are Streams?
 
-Streams are a concept that are not unique to Node.js, but compliment its parallel processing and asynchronous paradigms. As its name implies, streams are a continuous flow of information that can be diverted or processed as it comes in. This is incredibly efficient, because you don't have to wait until a stream is finished before working with any data that's come in. You don't need to expect a callback to fire, because streams work through  the event loop.
+A Stream is a flow of data that can be processed or sent into other streams as it comes in. There are stream producers and stream consumers.
 
-Although streams are very closely related to the Node.js I/O, they can also deal with file manipulation and requests to HTTP servers. The "stream" object can be readable, writable, or both at the same time. Each type of stream has its own events that emit when a certain action occurs.
+## Readable Streams
 
-Here's a trivial example to demonstrates reading and writing files:
+A stream producers is known as a readable stream. A readable stream produces occasional data events, each of them containing data chunks (think of a server spitting out a movie, for instance). A readable stream may end, emitting the "end" event. Examples of readable streams are: an HTTP response body, a file, the process standard input, a TCP connection, etc.
 
-<script src='http://snippets.c9.io/github.com/c9/nodemanual.org-examples/nodejs_dev_guide/understanding_streams/streams.ex.1.js?linestart=3&lineend=0&showlines=false' defer='defer'></script>
+Here is an example of a readable stream in Node:
 
-At first glance, this might appear to be the same as [reading and writing from a file regularly](reading_and_writing_files.html). The important thing to notice is that the `console.log()` statement is executed multiple times. That means that the `'data'` event is firing multiple times, which means the file reading and writing are happening multiple times. Node.js basically reads in as much data from the original file as it can, then writes some of it, then reads some more, and writes some more, and so on, until the process is finished and the `'end'` event is called.
+    var fs = require('fs');
+    
+    var readableStream = fs.createReadStream('/path/to/my/file');
+    
+    readableStream.on('data', function(data) {
+    	console.log('we got some data from the file:', data);
+    });
 
-In fact, performing this operation is rather common, and Node.js has several helper functions to assist this process, like [`streams.ReadableStream.pipe()`](../nodejs_ref_guide/streams.ReadableStream.html#streams.ReadableStream.pipe) and [`util.pump`](../nodejs_ref_guide/util.html#util.pump). To demonstrate this latter method, and to show how HTTP servers can use streams, too, take a look at this code:
+    readableStream.on('end', function() {
+    	console.log('The file has ended');
+    });
 
-<script src='http://snippets.c9.io/github.com/c9/nodemanual.org-examples/nodejs_dev_guide/understanding_streams/streams.ex.1.js?linestart=3&lineend=0&showlines=false' defer='defer'></script>
+# Writable Streams
 
-When you navigate to the server URL, you should start to hear the MP3 playing. Notice that we don't need to worry ourselves about handling when events start or end. In fact, you should probably stick to using the helper methods, unless you need to do some additional work better suited within the event's callback (like printing messages via `console.log()`).
+A stream consumer or a writable stream is an object that accepts data into it (think of a file we append to). It exposes the "write" method that we can use to write data to. Examples of typical writable streams in Node are: Server HTTP response body, a File which we append to, the process standard output, a TCP connection, etc.
+
+Here is an example of a writable stream in Node:
+
+    var fs = require('fs');
+
+    var writableStream = fs.createWriteStream('/path/to/my/file');
+
+    writableStream.write('Some data');
+    writableStream.write('Some more data');
+
+    writableStream.end();
+
+# Flow control
+
+In Node no I/O operation blocks, and writing to a stream (being a file, a network connection or other) doesn't block Node's event loop. If, for instance, we are writing into a network connection and the kernel buffers for that socket are not flushed yet, Node buffers the data for us and informs us of what the buffer status is. That way we can easily decide whether to keep writing (increasing the buffer memory size in your Node process) or to just wait until the kernel buffer has been flushed.
+
+While reading from a stream we can also decide to pause or resume that stream. That way we can  control the stream flow just like a water faucet.
+
+When reading data from a stream and writing it to another there is a classical problem that may occur when the write stream is slower that the read stream. For instance, imagine us serving a large movie via HTTP into a client that has a slow internet connection. Node will keep buffering the data, and if that persists for some time, your buffer memory will continue growing and you will start having problems.
+
+Fortunately there is a way for us to mitigate that problem by using the streams flow control primitives. Here is how writing the data coming from readable stream into a writable stream would be done in Node:
+
+    var readStream = ...;
+    var writeStream = ...;
+
+    readStream.on('data', function(data) {
+
+    	var flushed = writeStream.write(data);
+
+    	if (! flushed) {
+    		readStream.pause();
+    		
+    		writeStream.once('drain', function() {
+    			readStream.resume();
+    		});
+
+    	}
+    });
+
+    readStream.on('end', function() {
+    	writeStream.end();
+    });
+
+Here we have two abstract streams: the `readStream`, which is the stream we are getting data chunks from and the `writeStream`, the stream we are writing those chunks to. Once we get a "data" event with a data chunk, we write that data into the write stream. If that write was immediately flushed, we proceed normally. If not, we have to pause the `readStream` until the `writeStream` buffer is drained. Once it drains we can resume the `readStream`.
+
+# Stream#pipe
+
+This is an easy and nice way of making sure the write stream is not swamped with data it cannot flush. Fortunately Node has camptured this pattern into the core and provides a nice API that does this for us: `Stream#pipe`. Here is how we would do the code above using it:
+
+    var readStream = ...;
+    var writeStream = ...;
+
+    readStream.pipe(writeStream);
+
+Even simpler, right?
+
+# A Real Example
+
+Let's say we have an HTTP server that is serving a large movie file to each customer. Here is how we would do it using streams in Node:
+
+
+    var fs = require('fs');
+
+		require('http').createServer(function(req, res) {
+			var movie = fs.createReadStream('/path/to/my/movie.mov');
+			res.setHeader('Content-Type', 'video/quicktime');
+			movie.pipe(res);
+		});
