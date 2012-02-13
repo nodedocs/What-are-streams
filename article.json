@@ -1,8 +1,17 @@
 {
-  "title":"What are streams?",
-  "description": "Managing continuous data over time",
-  "date": "Fri Aug 26 2011 03:08:50 GMT-0700 (PST)",
-  "tags": ["core", "streams"],
-  "authors": ["Garen J. Torikian"],
-  "difficulty": 3
+	"title": "What are Streams",
+	"description": "Managing data throughout time",
+	"date": "Mon, 13 Feb 2012 14:54:38 GMT",
+	"tags": ["streams", "flow", "pipe"],
+	"authors": [
+	  { "name": "Josh Holbrook",
+		  "email": "josh.holbrook@gmail.com",
+		  "url": "https://github.com/jesusabdullah"
+    },
+    { "name": "Pedro Teixeira",
+		  "email": "pedro.teixeira@gmail.com",
+		  "url": "https://github.com/pgte"
+    }
+	],
+	"difficulty": 2
 }
