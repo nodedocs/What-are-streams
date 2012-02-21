@@ -12,5 +12,8 @@
 		  "url": "https://github.com/pgte"
     }
 	],
-	"difficulty": 2
+	"difficulty": 2,
+  "categories": [
+    ["Streams"]
+  ]
 }
