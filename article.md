@@ -8,17 +8,19 @@ A stream producers is known as a readable stream. A readable stream produces occ
 
 Here is an example of a readable stream in Node:
 
-    var fs = require('fs');
-    
-    var readableStream = fs.createReadStream('/path/to/my/file');
-    
-    readableStream.on('data', function(data) {
-    	console.log('we got some data from the file:', data);
-    });
+```javascript
+var fs = require('fs');
 
-    readableStream.on('end', function() {
-    	console.log('The file has ended');
-    });
+var readableStream = fs.createReadStream('/path/to/my/file');
+
+readableStream.on('data', function(data) {
+    console.log('we got some data from the file:', data);
+});
+
+readableStream.on('end', function() {
+    console.log('The file has ended');
+});
+```
 
 # Writable Streams
 
@@ -26,14 +28,16 @@ A stream consumer or a writable stream is an object that accepts data into it (t
 
 Here is an example of a writable stream in Node:
 
-    var fs = require('fs');
+```javascript
+var fs = require('fs');
 
-    var writableStream = fs.createWriteStream('/path/to/my/file');
+var writableStream = fs.createWriteStream('/path/to/my/file');
 
-    writableStream.write('Some data');
-    writableStream.write('Some more data');
+writableStream.write('Some data');
+writableStream.write('Some more data');
 
-    writableStream.end();
+writableStream.end();
+```
 
 # Flow control
 
@@ -45,26 +49,28 @@ When reading data from a stream and writing it to another there is a classical p
 
 Fortunately there is a way for us to mitigate that problem by using the streams flow control primitives. Here is how writing the data coming from readable stream into a writable stream would be done in Node:
 
-    var readStream = ...;
-    var writeStream = ...;
+```javascript
+var readStream = ...;
+var writeStream = ...;
 
-    readStream.on('data', function(data) {
+readStream.on('data', function(data) {
 
-    	var flushed = writeStream.write(data);
+    var flushed = writeStream.write(data);
 
-    	if (! flushed) {
-    		readStream.pause();
-    		
-    		writeStream.once('drain', function() {
-    			readStream.resume();
-    		});
+    if (! flushed) {
+    	readStream.pause();
+    	
+    	writeStream.once('drain', function() {
+    		readStream.resume();
+    	});
 
-    	}
-    });
+    }
+});
 
-    readStream.on('end', function() {
-    	writeStream.end();
-    });
+readStream.on('end', function() {
+    writeStream.end();
+});
+```
 
 Here we have two abstract streams: the `readStream`, which is the stream we are getting data chunks from and the `writeStream`, the stream we are writing those chunks to. Once we get a "data" event with a data chunk, we write that data into the write stream. If that write was immediately flushed, we proceed normally. If not, we have to pause the `readStream` until the `writeStream` buffer is drained. Once it drains we can resume the `readStream`.
 
@@ -72,10 +78,12 @@ Here we have two abstract streams: the `readStream`, which is the stream we are 
 
 This is an easy and nice way of making sure the write stream is not swamped with data it cannot flush. Fortunately Node has camptured this pattern into the core and provides a nice API that does this for us: `Stream#pipe`. Here is how we would do the code above using it:
 
-    var readStream = ...;
-    var writeStream = ...;
+```javascript
+var readStream = ...;
+var writeStream = ...;
 
-    readStream.pipe(writeStream);
+readStream.pipe(writeStream);
+```
 
 Even simpler, right?
 
@@ -85,31 +93,34 @@ Even simpler, right?
 
 Let's say we have an HTTP server that is serving a large movie file to each customer. Here is how we would do it using streams in Node:
 
+```javascript
+var fs = require('fs');
 
-    var fs = require('fs');
-
-	require('http').createServer(function(req, res) {
-		var movie = fs.createReadStream('/path/to/my/movie.mov');
-		res.setHeader('Content-Type', 'video/quicktime');
-		movie.pipe(res);
-	}).listen(8080);
+require('http').createServer(function(req, res) {
+	var movie = fs.createReadStream('/path/to/my/movie.mov');
+	res.setHeader('Content-Type', 'video/quicktime');
+	movie.pipe(res);
+}).listen(8080);
+```
 
 ## Piping the Request Body into a File Write Stream
 
 You can also pipe the response to an HTTP request into a file:
 
-    var http = require('http');
-	var fs   = require('fs');
+```javascript
+var http = require('http');
+var fs   = require('fs');
 
-	var writeStream = fs.createWriteStream('nodejitsu_logo.png');
+var writeStream = fs.createWriteStream('nodejitsu_logo.png');
 
-	var options = {
-		host: 'nodejitsu.com',
-		path: '/img/header-logo-grey.png'
-	};
+var options = {
+  host: 'nodejitsu.com',
+  path: '/img/header-logo-grey.png'
+};
 
-	http.request(options, function(res) {
-		res.pipe(writeStream);
-	}).end();
+http.request(options, function(res) {
+  res.pipe(writeStream);
+}).end();
+```
 
 Here you are opening a file writable stream and then making a request to a nodejitsu server, asking for the nodejitsu logo. When the server response comes in, you pipe it into file.
